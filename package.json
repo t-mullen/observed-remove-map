@@ -1,0 +1,24 @@
+{
+  "name": "observed-remove-map",
+  "version": "1.0.4",
+  "description": "Observed-Remove Map replicated data type.",
+  "main": "src/index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "standard --fix src/** && tape test/*.js",
+    "build": "browserify src/index.js -s OrMap -o dist/or-map.js"
+  },
+  "author": "Thomas Mullen",
+  "license": "MIT",
+  "devDependencies": {
+    "standard": "^8.6.0",
+    "tape": "^4.6.3"
+  },
+  "dependencies": {
+    "events": "^1.1.1",
+    "inherits": "^2.0.3",
+    "observed-remove-set": "^1.2.0"
+  }
+}
