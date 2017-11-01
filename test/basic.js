@@ -1,6 +1,32 @@
 var test = require('tape')
 var OrMap = require('./../')
 
+test('test toString', function (t) {
+  var map1 = OrMap('1')
+  map1.add('a')
+  map1.set('b', 1)
+  map1.set('c', 'd')
+  
+  var shouldBe = {
+    a: null,
+    b: 1,
+    c: 'd'
+  }
+
+  t.equals(map1.toString(), JSON.stringify(shouldBe))
+  t.end()
+})
+
+test('test values', function (t) {
+  var map1 = OrMap('1')
+  map1.add('a')
+  map1.set('b', 1)
+  map1.set('c', 'd')
+
+  t.deepEqual(map1.values(), [null, 1, 'd'])
+  t.end()
+})
+
 test('test add', function (t) {
   var map1 = OrMap('1')
   var map2 = OrMap('2')
@@ -63,6 +89,7 @@ test('test add/set/delete', function (t) {
   map1.set('a', 2)
   map2.set('b', 'bee')
   map1.delete('b')
+  map1.delete('x') // non-existent key
   
   t.assert(map1.keys().indexOf('a') !== -1, 'a in map1')
   t.assert(map2.keys().indexOf('a') !== -1, 'a in map2')
@@ -70,6 +97,7 @@ test('test add/set/delete', function (t) {
   
   t.assert(map1.keys().indexOf('b') === -1, 'b NOT in map1')
   t.assert(map2.keys().indexOf('b') === -1, 'b NOT in map2')
+  t.equal(map1.get('b'), null, 'b is null')
   t.equals(map2.get('b'), null, 'b is null')
   
   t.equals(map1.get('a'), map2.get('a'), 'values are equal')
@@ -218,7 +246,6 @@ test('test concurrent early delete (add not received)', function (t) {
   
   map1.on('op', op => op1.push(op))
   map2.on('op', op => op2.push(op))
-  map3.on('op', op => op3.push(op))
   
   map1.add('a')             // 1 adds
   map2.receive(op1[0])      // 2 receives add
