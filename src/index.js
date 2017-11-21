@@ -65,6 +65,7 @@ OrMap.prototype._onRemoteDelete = function (e) {
 
   var key = e[0]
   var uuid = e[2]
+  var value = self.get(key)
 
   // remove deleted element
   var index = self._mappings[key].findIndex(m => {
@@ -74,7 +75,7 @@ OrMap.prototype._onRemoteDelete = function (e) {
 
   if (self._mappings[key].length === 0) {
     delete self._mappings[key]
-    self.emit('delete', key)
+    self.emit('delete', key, value)
   }
 }
 
