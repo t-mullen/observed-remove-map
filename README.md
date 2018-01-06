@@ -16,7 +16,7 @@ function delay (cb) {
 }
 
 // let's "connect" our two maps
-map1.on('op', op => delay(() => map1.receive(op)))
+map1.on('op', op => delay(() => map2.receive(op)))
 map2.on('op', op => delay(() => map1.receive(op)))
 
 // both Bob and Alice simulatenously set "a" to different values
