@@ -1,4 +1,4 @@
-var EventEmitter = require('events').EventEmitter
+var EventEmitter = require('nanobus')
 var inherits = require('inherits')
 var OrSet = require('observed-remove-set')
 
@@ -7,6 +7,8 @@ inherits(OrMap, EventEmitter)
 function OrMap (site, opts) {
   var self = this
   if (!(self instanceof OrMap)) return new OrMap(site, opts)
+
+  EventEmitter.call(self)
 
   opts = opts || {}
 
