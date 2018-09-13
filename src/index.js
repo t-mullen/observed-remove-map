@@ -16,6 +16,7 @@ function OrMap (site, opts) {
   self._parse = opts.parse || JSON.parse
 
   self.site = site
+  self._counter = 0
   self._set = new OrSet(site, opts)
 
   self._set.on('op', (op) => self.emit('op', op))
@@ -43,14 +44,15 @@ OrMap.prototype.receive = function (op) {
   self._set.receive(op)
 }
 
-OrMap.prototype._onRemoteAdd = function ({ key }) {
+OrMap.prototype._onRemoteAdd = function ({ key, value }) {
   var self = this
 
   // add fires once per add or set
   var matches = self._set.values().filter(x => x.key === key)
   if (matches.length === 1) self.emit('add', key)
 
-  self.emit('set', key, self.get(key))
+  var getValue = self.get(key) // the actual value (conflicts resolved by site ID)
+  if (value === getValue) self.emit('set', key, value)
 }
 
 OrMap.prototype._onRemoteDelete = function ({ key, value, uuid }) {
@@ -72,7 +74,7 @@ OrMap.prototype.set = function (key, value) {
   var oldValues = self._set.values()
 
   // create a new relation element
-  self._set.add({ key, value, site: self.site })
+  self._set.add({ key, value, site: self.site, counter: ++self._counter })
 
   // remove all other relations with the given key
   oldValues.forEach((r) => {
@@ -126,8 +128,8 @@ OrMap.prototype.toObject = function () {
 
   var obj = {}
 
-  self._set.values().forEach(r => {
-    obj[r.key] = r.value
+  self.keys().forEach(key => {
+    obj[key] = self.get(key)
   })
 
   return obj
