@@ -15,24 +15,26 @@ function OrMap (site, opts) {
   self._serialize = opts.serialize || JSON.stringify
   self._parse = opts.parse || JSON.parse
 
-  self._site = site
-  self._counter = 0
-
+  self.site = site
   self._set = new OrSet(site, opts)
 
-  self._set.on('op', (op) => {
-    self.emit('op', op)
-  })
+  self._set.on('op', (op) => self.emit('op', op))
   self._set.on('add', self._onRemoteAdd.bind(self))
   self._set.on('delete', self._onRemoteDelete.bind(self))
 
-  self._mappings = {} // just a faster way to do lookups on the set
+  if (opts.state) {
+    self.setState(opts.state)
+  }
 }
 
-OrMap.prototype._unique = function () {
+OrMap.prototype.setState = function (state) {
   var self = this
+  self._set.setState(state)
+}
 
-  return [self._site, self._counter++]
+OrMap.prototype.getState = function () {
+  var self = this
+  return self._set.getState()
 }
 
 OrMap.prototype.receive = function (op) {
@@ -41,44 +43,21 @@ OrMap.prototype.receive = function (op) {
   self._set.receive(op)
 }
 
-OrMap.prototype._onRemoteAdd = function (e) {
+OrMap.prototype._onRemoteAdd = function ({ key }) {
   var self = this
 
   // add fires once per add or set
+  var matches = self._set.values().filter(x => x.key === key)
+  if (matches.length === 1) self.emit('add', key)
 
-  var key = e[0]
-  var value = e[1]
-  var uuid = e[2]
-
-  if (!self._mappings[key]) {
-    self._mappings[key] = [[value, uuid]]
-    self.emit('add', key)
-  } else {
-    self._mappings[key].push([value, uuid])
-  }
-
-  self.emit('set', key, value)
+  self.emit('set', key, self.get(key))
 }
 
-OrMap.prototype._onRemoteDelete = function (e) {
+OrMap.prototype._onRemoteDelete = function ({ key, value, uuid }) {
   var self = this
 
-  // delete can fire multiple times per add, set or delete
-
-  var key = e[0]
-  var uuid = e[2]
-  var value = self.get(key)
-
-  // remove deleted element
-  var index = self._mappings[key].findIndex(m => {
-    if (m[1][0] === uuid[0] && m[1][1] === uuid[1]) return true
-  })
-  self._mappings[key].splice(index, 1)
-
-  if (self._mappings[key].length === 0) {
-    delete self._mappings[key]
-    self.emit('delete', key, value)
-  }
+  var count = self._set.values().filter(x => x.key === key).length
+  if (count === 0) self.emit('delete', key)
 }
 
 OrMap.prototype.add = function (key) {
@@ -90,54 +69,54 @@ OrMap.prototype.add = function (key) {
 OrMap.prototype.set = function (key, value) {
   var self = this
 
-  if (!self._mappings[key]) self._mappings[key] = []
-
-  // remove all existing mappings and elements with key
-  self._mappings[key].forEach((m) => {
-    self._set.delete([key, m[0], m[1]])
+  // remove all existing relations with the given key
+  self._set.values().forEach((r) => {
+    if (r.key === key) self._set.delete(r)
   })
 
-  // create a new mapping and element
-  var uuid = self._unique()
-  self._mappings[key] = [[value, uuid]]
-  self._set.add([key, value, uuid])
+  // create a new relation element
+  self._set.add({ key, value, site: self.site })
 }
 
 OrMap.prototype.get = function (key) {
   var self = this
 
-  if (!self._mappings[key]) return null
+  // find any relation with a key
+  var matches = self._set.values().filter((r) => {
+    return r.key === key
+  })
+  if (matches.length === 0) return undefined
 
-  // return the value of mapping with the highest uuid (conflict resolution)
-  return self._mappings[key].reduce(function (prev, current) {
-    return (prev[1] > current[1]) ? prev : current
-  })[0]
+  if (matches.length > 1) {
+    return matches.sort((a, b) => {
+      return a.site < b.site
+    })[0].value
+  } else {
+    return matches[0].value
+  }
 }
 
 OrMap.prototype.delete = function (key) {
   var self = this
 
-  if (!self._mappings[key]) return
-
-  // remove all existing mappings and elements with key
-  self._mappings[key].forEach((m) => {
-    self._set.delete([key, m[0], m[1]])
+  // remove all existing relations with the given key
+  self._set.values().forEach((r) => {
+    if (r.key === key) self._set.delete(r)
   })
-  delete self._mappings[key]
 }
 
 OrMap.prototype.keys = function () {
   var self = this
 
-  return Object.keys(self._mappings)
+  return self._set.values()
+    .map(relation => relation.key)
+    .filter((r, i, self) => self.indexOf(r) === i) // filter duplicate keys
 }
 
 OrMap.prototype.values = function () {
   var self = this
 
-  return Object.keys(self._mappings).map(key => {
-    return self.get(key)
-  })
+  return self.keys().map(key => self.get(key))
 }
 
 OrMap.prototype.toObject = function () {
@@ -145,14 +124,14 @@ OrMap.prototype.toObject = function () {
 
   var obj = {}
 
-  Object.keys(self._mappings).forEach(key => {
-    obj[key] = self.get(key)
+  self._set.values().forEach(r => {
+    obj[r.key] = r.value
   })
 
   return obj
 }
 
-OrMap.prototype.toString = function (encoding) {
+OrMap.prototype.toString = function () {
   var self = this
 
   return self._serialize(self.toObject())

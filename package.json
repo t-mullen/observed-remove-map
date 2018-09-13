@@ -19,6 +19,6 @@
   "dependencies": {
     "inherits": "^2.0.3",
     "nanobus": "^4.3.3",
-    "observed-remove-set": "^3.0.0"
+    "observed-remove-set": "^3.1.0"
   }
 }

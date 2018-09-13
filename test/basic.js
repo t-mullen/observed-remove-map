@@ -22,7 +22,7 @@ test('test values', function (t) {
   map1.add('a')
   map1.set('b', 1)
   map1.set('c', 'd')
-
+  
   t.deepEqual(map1.values(), [null, 1, 'd'])
   t.end()
 })
@@ -71,7 +71,7 @@ test('test add/delete', function (t) {
   t.assert(map2.keys().indexOf('b') === -1, 'b NOT in map2')
   
   t.equals(map1.get('a'), map2.get('a'), 'values are equal')
-  t.equals(map1.get('a'), map2.get('b'), 'values are equal')
+  t.equals(map1.get('b'), map2.get('b'), 'values are equal')
   
   t.equals(map1.keys().length, 1)
   t.equals(map2.keys().length, 1)
@@ -97,8 +97,8 @@ test('test add/set/delete', function (t) {
   
   t.assert(map1.keys().indexOf('b') === -1, 'b NOT in map1')
   t.assert(map2.keys().indexOf('b') === -1, 'b NOT in map2')
-  t.equal(map1.get('b'), null, 'b is null')
-  t.equals(map2.get('b'), null, 'b is null')
+  t.equal(map1.get('b'), undefined, 'b is undefined')
+  t.equals(map2.get('b'), undefined, 'b is undefined')
   
   t.equals(map1.get('a'), map2.get('a'), 'values are equal')
   t.equals(map1.get('b'), map2.get('b'), 'values are equal')
@@ -161,7 +161,7 @@ test('test concurrent set/delete', function (t) {
   map2.delete('a')
   while (op2[0]) map1.receive(op2.shift())
   while (op1[0]) map2.receive(op1.shift())
-  
+
   t.assert(map1.keys().indexOf('a') !== -1, 'a in map1')
   t.assert(map2.keys().indexOf('a') !== -1, 'a in map2')
   
@@ -201,6 +201,7 @@ test('test concurrent set/set', function (t) {
   
   t.equals(map1.keys().length, 1)
   t.equals(map2.keys().length, 1)
+  t.equals(map2.keys().length, map2.values().length)
   t.end()
 })
 
@@ -264,6 +265,40 @@ test('test concurrent early delete (add not received)', function (t) {
   t.end()
 })
 
+test('test state transfer', function (t) {
+  var map1 = OrMap('1')
+  var map2 = OrMap('2')
+  
+  map1.on('op', op => map2.receive(op))
+  map2.on('op', op => map1.receive(op))
+
+  map1.add('a')
+  map1.add('b')
+  map1.delete('b')
+  
+  map2.add('a')
+  map2.delete('a')
+  map2.add('d')
+
+  var map3 = OrMap('3', { state: map1.getState() })
+  t.deepEquals(map1.toObject(), map3.toObject())
+
+  map3.on('op', op => map2.receive(op))
+  map3.on('op', op => map1.receive(op))
+  map2.on('op', op => map3.receive(op))
+  map1.on('op', op => map3.receive(op))
+
+  map3.set('g', 2)
+  
+  map1.set('x', 0)
+  map2.set('x', 4)
+  map3.set('x', 1)
+
+  t.deepEquals(map2.toObject(), map3.toObject())
+  t.deepEquals(map2.toObject(), map1.toObject())
+
+  t.end()
+})
 
 test('test random operations and delays', function (t) {
   var map1 = OrMap('1')
