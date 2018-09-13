@@ -83,7 +83,7 @@ Receive an operation from a remote map. Must be called exactly once per remote o
 
 ### `orMap.on('op', function (op) {})`
 
-Fires when an operation needs to be sent to connected Maps. Operations should be delivered in the order they are emitted and must be delivered exactly once. There may be multiple operation events for each call to a method.
+Fires when an operation needs to be sent to connected Maps. Operations can be delivered in any order and more-than-once, but must be delivered at-least-once. There may be multiple operation events for each call to a method.
 
 `op` is the operation object that needs to be passed into `otherOrMap.receive(op)` for all other replicas.
 
