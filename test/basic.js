@@ -176,6 +176,73 @@ test('test concurrent set/delete', function (t) {
   t.end()
 })
 
+test('test out-of-order delivery', function (t) {
+  var map1 = OrMap('1')
+  var map2 = OrMap('2')
+  
+  var op1 = []
+  var op2 = []
+
+  map1.on('op', op => {
+    op1.push(op)
+  })
+  map2.on('op', op => {
+    op2.push(op)
+  })
+  
+  map1.set('a', 0)
+  map1.set('a', 1)
+  map2.delete('a')
+  map1.set('b', 1)
+  map1.delete('b')
+  map1.delete('b')
+
+  while (op2[0]) map1.receive(op2.pop()) // out-of-order
+  while (op1[0]) map2.receive(op1.pop())
+
+  t.deepEquals(map1.toObject(), map2.toObject())
+  t.end()
+})
+
+
+test('test more-than-once delivery', function (t) {
+  var map1 = OrMap('1')
+  var map2 = OrMap('2')
+  
+  var op1 = []
+  var op2 = []
+
+  map1.on('op', op => {
+    op1.push(op)
+  })
+  map2.on('op', op => {
+    op2.push(op)
+  })
+  
+  map1.set('a', 0)
+  map1.set('a', 1)
+  map2.delete('a')
+  map1.set('b', 1)
+  map1.delete('b')
+  map1.delete('b')
+
+  while (op2[0]) {
+    for (var i=0; i<5; i++) {
+      map1.receive(op2[0])
+    }
+    op2.shift()
+  }
+  while (op1[0]) {
+    for (var i=0; i<5; i++) {
+      map2.receive(op1[0])
+    }
+    op1.shift()
+  }
+
+  t.deepEquals(map1.toObject(), map2.toObject())
+  t.end()
+})
+
 test('test concurrent set/set', function (t) {
   var map1 = OrMap('1')
   var map2 = OrMap('2')
@@ -205,7 +272,7 @@ test('test concurrent set/set', function (t) {
   
   t.equals(map1.keys().length, 1)
   t.equals(map2.keys().length, 1)
-  t.equals(map2.keys().length, map2.values().length)
+  t.deepEquals(map1.toObject(), map2.toObject())
   t.end()
 })
 
