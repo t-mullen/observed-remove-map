@@ -476,11 +476,11 @@ OrSet.prototype._remoteDelete = function (element, deletedReferences) {
     return
   }
 
-  var tombstones = OrSet._intersection(deletedReferences, self._references[element])
+  var tombstones = OrSet._difference(deletedReferences, self._references[element])
   self._addTombstones(element, tombstones)
 
   // remove all pairs that the remote replica has seen
-  self._references[element] = OrSet._intersection(self._references[element], deletedReferences)
+  self._references[element] = OrSet._difference(self._references[element], deletedReferences)
   if (self._references[element].length > 0) return // element is still there
 
   delete self._references[element]
@@ -519,7 +519,7 @@ OrSet.prototype.toString = function () {
 
 // A - B
 // O(mn)
-OrSet._intersection = function (a, b) {
+OrSet._difference = function (a, b) {
   return a.filter((ae) => {
     return !b.some((be) => {
       return ae[0] === be[0] && ae[1] === be[1]
@@ -591,6 +591,7 @@ function OrMap (site, opts) {
   self._parse = opts.parse || JSON.parse
 
   self.site = site
+  self._counter = 0
   self._set = new OrSet(site, opts)
 
   self._set.on('op', (op) => self.emit('op', op))
@@ -618,14 +619,15 @@ OrMap.prototype.receive = function (op) {
   self._set.receive(op)
 }
 
-OrMap.prototype._onRemoteAdd = function ({ key }) {
+OrMap.prototype._onRemoteAdd = function ({ key, value }) {
   var self = this
 
   // add fires once per add or set
   var matches = self._set.values().filter(x => x.key === key)
   if (matches.length === 1) self.emit('add', key)
 
-  self.emit('set', key, self.get(key))
+  var getValue = self.get(key) // the actual value (conflicts resolved by site ID)
+  if (value === getValue) self.emit('set', key, value)
 }
 
 OrMap.prototype._onRemoteDelete = function ({ key, value, uuid }) {
@@ -644,13 +646,15 @@ OrMap.prototype.add = function (key) {
 OrMap.prototype.set = function (key, value) {
   var self = this
 
-  // remove all existing relations with the given key
-  self._set.values().forEach((r) => {
-    if (r.key === key) self._set.delete(r)
-  })
+  var oldValues = self._set.values()
 
   // create a new relation element
-  self._set.add({ key, value, site: self.site })
+  self._set.add({ key, value, site: self.site, counter: ++self._counter })
+
+  // remove all other relations with the given key
+  oldValues.forEach((r) => {
+    if (r.key === key) self._set.delete(r)
+  })
 }
 
 OrMap.prototype.get = function (key) {
@@ -699,8 +703,8 @@ OrMap.prototype.toObject = function () {
 
   var obj = {}
 
-  self._set.values().forEach(r => {
-    obj[r.key] = r.value
+  self.keys().forEach(key => {
+    obj[key] = self.get(key)
   })
 
   return obj
