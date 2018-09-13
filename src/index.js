@@ -69,13 +69,15 @@ OrMap.prototype.add = function (key) {
 OrMap.prototype.set = function (key, value) {
   var self = this
 
-  // remove all existing relations with the given key
-  self._set.values().forEach((r) => {
-    if (r.key === key) self._set.delete(r)
-  })
+  var oldValues = self._set.values()
 
   // create a new relation element
   self._set.add({ key, value, site: self.site })
+
+  // remove all other relations with the given key
+  oldValues.forEach((r) => {
+    if (r.key === key) self._set.delete(r)
+  })
 }
 
 OrMap.prototype.get = function (key) {

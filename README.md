@@ -91,7 +91,7 @@ Fires when an operation needs to be sent to connected Maps. Operations can be de
 
 Fires when a new key is added to the map by a *remote* operation. (will **not** fire when `orMap.add()` is called locally.)
 
-### `orMap.on('delete', function (key, value) {})`
+### `orMap.on('delete', function (key) {})`
 
 Fires when a key is removed from the map by a *remote* operation. (will **not** fire when `orMap.delete()` is called locally.)
 

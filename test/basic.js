@@ -33,6 +33,10 @@ test('test add', function (t) {
   
   map1.on('op', op => map2.receive(op))
   map2.on('op', op => map1.receive(op))
+
+  map1.on('add', (key) => console.log('add', key))
+  map1.on('set', (key, value) => console.log('set', key, value))
+  map1.on('delete', (key,) => console.log('delete', key))
   
   map1.add('a')
   map2.add('b')
