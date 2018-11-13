@@ -369,15 +369,10 @@ test('test state transfer', function (t) {
 
   t.end()
 })
-/*
+
 test('test random operations and delays', function (t) {
-  var map1 = OrMap('1')
-  var map2 = OrMap('2')
-  var map3 = OrMap('3')
-  
-  var op1 = []
-  var op2 = []
-  var op3 = []
+  var maps = [OrMap('1'), OrMap('2'), OrMap('3')]
+  var ops = [[], [], []]
   
   var waiting = 0
   
@@ -387,69 +382,53 @@ test('test random operations and delays', function (t) {
   
   // pushes to queue, then after a random time, takes the top off the queue
   // like all CRDTs, relatively causality between sites needs to be preserved
-  map1.on('op', op => {
-    op1.push(op)
-    waiting++
-    afterRandomDelay(() => {
-      var opn = op1.shift()
-      map2.receive(opn)
-      map3.receive(opn)
-      waiting--
-      checkIfDone()
-    })
-  })
-  map2.on('op', op => {
-    op2.push(op)
-    waiting++
-    afterRandomDelay(() => {
-      var opn = op2.shift()
-      map1.receive(opn)
-      map3.receive(opn)
-      waiting--
-      checkIfDone()
-    })
-  })
-  map3.on('op', op => {
-    op3.push(op)
-    waiting++
-    afterRandomDelay(() => {
-      var opn = op3.shift()
-      map2.receive(opn)
-      map1.receive(opn)
-      waiting--
-      checkIfDone()
-    })
-  })
+  for (var s=0; s<3; s++) {
+    ;((s) => {
+      maps[s].on('op', op => {
+        var repeats = 1 + Math.floor(Math.random() * 3)
+        for (var i=0; i<repeats; i++) { // more-than-once
+          ops[s].push(op)
+          waiting++
+
+          afterRandomDelay(() => {
+            var rnd = Math.floor(ops[s].length * Math.random())
+            var opn = ops[s].splice(rnd, 1)[0] // out of order
+            for (var s2=0; s2<3; s2++) {
+              if (s2 == s) continue
+              maps[s2].receive(opn)
+            }
+            waiting--
+            checkIfDone()
+          })
+        }
+      })
+    })(s)
+  }
   
-  var obj = {}
-  obj.map1 = map1
-  obj.map2 = map2
-  obj.map3 = map3
   for (var i=0; i<300; i++) {
-    var site = 1 + Math.floor(Math.random() * 3)
-    var op = ['add', 'delete', 'set'][Math.floor(Math.random() * 3)]
-    var key = Math.random()
+    var site = Math.floor(Math.random() * 3)
+    var op = ['add', 'delete', 'set'][Math.floor(Math.random() * 2)]
     var value = Math.random()
     
-    obj['map'+site][op](key, value)
+    maps[site][op](value)
   }
   
   function checkIfDone () {
     if (waiting > 0) return
-    
-    var size = map1.keys().length
-    t.equals(map2.keys().length, size)
-    t.equals(map3.keys().length, size)
-    
-    map1.keys().forEach((key) => {
-      t.assert(map2.keys().indexOf(key) !== -1)
-      t.assert(map3.keys().indexOf(key) !== -1)
-      
-      t.equals(map1.get(key), map2.get(key))
-      t.equals(map1.get(key), map3.get(key))
+
+    maps.forEach((s1, i1) => {
+      maps.forEach((s2, i2) => {
+        if (i1 === i2) return
+        s1.keys().forEach((key) => {
+          t.assert(s2.keys().indexOf(key) !== -1, 'key is contained in other map')
+          t.equal(s2.get(key), s1.get(key), 'key-value pairing is the same')
+        })
+        s1.values().forEach((value) => {
+          t.assert(s2.values().indexOf(value) !== -1, 'value is contained in other map')
+        })
+      })
     })
-    
+
     t.end()
   }
 })
-*/
