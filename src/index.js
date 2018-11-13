@@ -82,13 +82,24 @@ OrMap.prototype.set = function (key, value) {
   })
 }
 
+OrMap.prototype._getKeyMatches = function (key) {
+  var self = this
+  // find any relation with a key
+  return self._set.values().filter((r) => {
+    return r.key === key
+  })
+}
+
+OrMap.prototype.has = function (key) {
+  var self = this
+  return self._getKeyMatches(key).length !== 0
+}
+
 OrMap.prototype.get = function (key) {
   var self = this
 
   // find any relation with a key
-  var matches = self._set.values().filter((r) => {
-    return r.key === key
-  })
+  var matches = self._getKeyMatches(key)
   if (matches.length === 0) return undefined
 
   if (matches.length > 1) {

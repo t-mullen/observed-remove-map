@@ -268,6 +268,7 @@ test('test concurrent set/set', function (t) {
   t.assert(map1.keys().indexOf('a') !== -1, 'a in map1')
   t.assert(map2.keys().indexOf('a') !== -1, 'a in map2')
   
+  t.assert(map1.has('a') && map2.has('a'), 'values are present')
   t.equals(map1.get('a'), map2.get('a'), 'values are equal')
   
   t.equals(map1.keys().length, 1)

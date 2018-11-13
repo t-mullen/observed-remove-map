@@ -65,6 +65,10 @@ Remove a key and it's value from the map.
 
 Sets the value at `key`. If `key` does not exist, it will be added first.
 
+### `orMap.has(key)`
+
+Returns true if the map contains the given `key`.
+
 ### `orMap.get(key)`
 
 Returns the value associated with the given `key`.
