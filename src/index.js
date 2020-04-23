@@ -4,7 +4,7 @@ var OrSet = require('observed-remove-set')
 
 inherits(OrMap, EventEmitter)
 
-function OrMap(site, opts) {
+function OrMap (site, opts) {
   var self = this
   if (!(self instanceof OrMap)) return new OrMap(site, opts)
 
@@ -21,7 +21,16 @@ function OrMap(site, opts) {
   self._counter = 0
   self._set = new OrSet(site, opts)
 
-  self._set.on('op', (op) => self.emit('op', op))
+  this._applyingBundle = false
+  this._creatingBundle = false
+  this._bundle = []
+  self._set.on('op', (op) => {
+    if (this._creatingBundle) {
+      this._bundle.push(op)
+    } else {
+      self.emit('op', op)
+    }
+  })
   self._set.on('add', self._onRemoteAdd.bind(self))
   self._set.on('delete', self._onRemoteDelete.bind(self))
 
@@ -41,9 +50,13 @@ OrMap.prototype.getState = function () {
 }
 
 OrMap.prototype.receive = function (op) {
-  var self = this
-
-  self._set.receive(op)
+  if (op.bundle) {
+    this._applyingBundle = true
+    op.bundle.forEach((op) => this._set.receive(op))
+    this._applyingBundle = false
+  } else {
+    this._set.receive(op)
+  }
 }
 
 OrMap.prototype._onRemoteAdd = function ({ key, value }) {
@@ -60,6 +73,8 @@ OrMap.prototype._onRemoteAdd = function ({ key, value }) {
 OrMap.prototype._onRemoteDelete = function ({ key, value, uuid }) {
   var self = this
 
+  if (this._applyingBundle) return // ignore deletes within a set bundle
+
   var count = self._set.values().filter(x => self._compareKeys(x.key, key)).length
   if (count === 0) self.emit('delete', key)
 }
@@ -73,15 +88,20 @@ OrMap.prototype.add = function (key) {
 OrMap.prototype.set = function (key, value) {
   var self = this
 
-  var oldValues = self._set.values()
+  this._creatingBundle = true
+
+  // remove all other relations with the given key
+  self._set.values().forEach((r) => {
+    if (self._compareKeys(r.key, key)) self._set.delete(r)
+  })
 
   // create a new relation element
   self._set.add({ key, value, site: self.site, counter: ++self._counter })
 
-  // remove all other relations with the given key
-  oldValues.forEach((r) => {
-    if (self._compareKeys(r.key, key)) self._set.delete(r)
-  })
+  this._creatingBundle = false
+
+  this.emit('op', { bundle: this._bundle })
+  this._bundle = []
 }
 
 OrMap.prototype._getKeyMatches = function (key) {

@@ -36,7 +36,7 @@ test('test add', function (t) {
 
   map1.on('add', (key) => console.log('add', key))
   map1.on('set', (key, value) => console.log('set', key, value))
-  map1.on('delete', (key, ) => console.log('delete', key))
+  map1.on('delete', (key) => console.log('delete', key))
 
   map1.add('a')
   map2.add('b')
@@ -49,10 +49,38 @@ test('test add', function (t) {
   t.assert(map2.keys().indexOf('b') !== -1, 'b in map2')
 
   t.equals(map1.get('a'), map2.get('a'), 'values are equal')
-  t.equals(map1.get('a'), map2.get('b'), 'values are equal')
+  t.equals(map1.get('b'), map2.get('b'), 'values are equal')
 
   t.equals(map1.keys().length, 2)
   t.equals(map2.keys().length, 2)
+  t.end()
+})
+
+test('test repeat set', function (t) {
+  var map1 = OrMap('1')
+  var map2 = OrMap('2')
+
+  map1.on('op', op => map2.receive(op))
+  map2.on('op', op => map1.receive(op))
+
+  map2.once('set', (key, value) => {
+    t.equals(key, 'a')
+    t.equals(value, 1)
+    map2.once('set', (key, value) => {
+      t.equals(key, 'a')
+      t.equals(value, 2)
+    })
+  })
+
+  map1.set('a', 1)
+  map1.set('a', 2)
+
+  t.assert(map1.keys().indexOf('a') !== -1, 'a in map1')
+  t.assert(map2.keys().indexOf('a') !== -1, 'a in map2')
+
+  t.equals(map1.get('a'), map2.get('a'), 'values are equal')
+
+  t.equals(map1.keys().length, 1)
   t.end()
 })
 
