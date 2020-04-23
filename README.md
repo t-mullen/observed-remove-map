@@ -45,11 +45,21 @@ npm install observed-remove-map
 
 ## api
 
-### `orMap = new OrMap(uuid)`
+### `orMap = new OrMap(uuid, [opts])`
 
 Create a new OR-Map.
 
 Required `uuid` is some universally unique identifer for this map.
+
+Optional `opts` object is an object of the form:
+```javascript
+{
+  serialize: (Object) => {},              // custom object serializer
+  parse: (String) => {},                  // custom object deserializer
+  compareKeys: (Object, Object) => bool,  // custom key comparator (returns true if objects are equal)
+  compareValues(Object, Object) => bool   // custom value comparator
+}
+```
 
 ### `orMap.add(key)`
 

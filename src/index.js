@@ -4,7 +4,7 @@ var OrSet = require('observed-remove-set')
 
 inherits(OrMap, EventEmitter)
 
-function OrMap (site, opts) {
+function OrMap(site, opts) {
   var self = this
   if (!(self instanceof OrMap)) return new OrMap(site, opts)
 
@@ -14,6 +14,8 @@ function OrMap (site, opts) {
 
   self._serialize = opts.serialize || JSON.stringify
   self._parse = opts.parse || JSON.parse
+  self._compareKeys = opts.compareKeys || ((a, b) => a === b)
+  self._compareValues = opts.compareValues || ((a, b) => a === b)
 
   self.site = site
   self._counter = 0
@@ -48,17 +50,17 @@ OrMap.prototype._onRemoteAdd = function ({ key, value }) {
   var self = this
 
   // add fires once per add or set
-  var matches = self._set.values().filter(x => x.key === key)
+  var matches = self._set.values().filter(x => self._compareKeys(x.key, key))
   if (matches.length === 1) self.emit('add', key)
 
-  var getValue = self.get(key) // the actual value (conflicts resolved by site ID)
-  if (value === getValue) self.emit('set', key, value)
+  var currentValue = self.get(key) // the actual value (conflicts resolved by site ID)
+  if (self._compareValues(value, currentValue)) self.emit('set', key, value)
 }
 
 OrMap.prototype._onRemoteDelete = function ({ key, value, uuid }) {
   var self = this
 
-  var count = self._set.values().filter(x => x.key === key).length
+  var count = self._set.values().filter(x => self._compareKeys(x.key, key)).length
   if (count === 0) self.emit('delete', key)
 }
 
@@ -78,7 +80,7 @@ OrMap.prototype.set = function (key, value) {
 
   // remove all other relations with the given key
   oldValues.forEach((r) => {
-    if (r.key === key) self._set.delete(r)
+    if (self._compareKeys(r.key, key)) self._set.delete(r)
   })
 }
 
@@ -86,7 +88,7 @@ OrMap.prototype._getKeyMatches = function (key) {
   var self = this
   // find any relation with a key
   return self._set.values().filter((r) => {
-    return r.key === key
+    return self._compareKeys(r.key, key)
   })
 }
 
@@ -116,7 +118,7 @@ OrMap.prototype.delete = function (key) {
 
   // remove all existing relations with the given key
   self._set.values().forEach((r) => {
-    if (r.key === key) self._set.delete(r)
+    if (self._compareKeys(r.key, key)) self._set.delete(r)
   })
 }
 
@@ -125,7 +127,7 @@ OrMap.prototype.keys = function () {
 
   return self._set.values()
     .map(relation => relation.key)
-    .filter((r, i, self) => self.indexOf(r) === i) // filter duplicate keys
+    .filter((r, i, s) => s.findIndex((a) => self._compareKeys(a, r)) === i) // filter duplicate keys
 }
 
 OrMap.prototype.values = function () {
