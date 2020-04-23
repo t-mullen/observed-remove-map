@@ -85,6 +85,14 @@ Returns an array with all values.
 
 Receive an operation from a remote map. Must be called exactly once per remote operation.
 
+### `orMap.getState()`
+
+Get the complete state of the system. Useful for complete replication to other sites. Not consistency safe without a 2-step sync.
+
+### `orMap.setState(sate)`
+
+Set the complete state of the system (use the state object from `getState`). Useful for complete replication to other sites. Not consistency safe without a 2-step sync.
+
 ### `orMap.on('op', function (op) {})`
 
 Fires when an operation needs to be sent to connected Maps. Operations can be delivered in any order and more-than-once, but must be delivered at-least-once. There may be multiple operation events for each call to a method.
