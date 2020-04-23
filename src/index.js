@@ -104,7 +104,7 @@ OrMap.prototype.get = function (key) {
 
   if (matches.length > 1) {
     return matches.sort((a, b) => {
-      return a.site < b.site
+      return a.site < b.site ? -1 : 1
     })[0].value
   } else {
     return matches[0].value
